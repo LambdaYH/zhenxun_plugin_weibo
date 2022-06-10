@@ -2,6 +2,7 @@
 移植自[KokkoroBot-Multi-Platform](https://github.com/zzbslayer/KokkoroBot-Multi-Platform)
 ## 使用
 在插件目录下的weibo_config.json添加配置
+> 首次使用需要重启一次才可以在group_manager.json中增加配置项
 ```
 [
     {
