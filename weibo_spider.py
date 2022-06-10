@@ -20,6 +20,7 @@ except:
     import json
 
 http_prefix = "https"
+api_url = f"{http_prefix}://m.weibo.cn/api/container/getIndex"
 month = {month: index for index, month in enumerate(calendar.month_abbr) if month}
 weibo_record_path = TEMP_PATH / "weibo"
 
@@ -44,7 +45,7 @@ class WeiboSpider(object):
     async def get_json(self, params):
         """获取网页中json数据"""
         r = await AsyncHttpx.get(
-            f"{http_prefix}://m.weibo.cn/api/container/getIndex",
+            api_url,
             params=params,
             timeout=20.0,
         )
