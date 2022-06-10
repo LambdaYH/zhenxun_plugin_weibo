@@ -152,7 +152,7 @@ async def _():
                             await bot.send_group_msg(group_id=g, message=weibo)
                         except Exception as e:
                             logger.error(f"GROUP {g} 微博推送失败 {type(e)}: {e}")
-                        sleep(0.5)
+                        await sleep(0.5)
 
 
 @scheduler.scheduled_job("cron", second="0", minute="0", hour="5")
