@@ -64,7 +64,7 @@ class WeiboSpider(object):
     def get_username(self):
         return self.user_name
 
-    async def save(self):
+    def save(self):
         with open(self.record_file_path, "w", encoding="utf8") as f:
             json.dump(self.received_weibo_ids, f, indent=4, ensure_ascii=False)
 
