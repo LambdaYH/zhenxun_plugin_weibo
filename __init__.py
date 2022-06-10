@@ -145,14 +145,14 @@ async def _():
             bot = get_bot()
             gl = await bot.get_group_list()
             gl = [g["group_id"] for g in gl]
-            for weibo in weibos:
-                for g in gl:
-                    if await group_manager.check_group_task_status(g, task):
-                        try:
+            for g in gl:
+                if await group_manager.check_group_task_status(g, task):
+                    try:
+                        for weibo in weibos:
+                            await sleep(0.5)
                             await bot.send_group_msg(group_id=g, message=weibo)
-                        except Exception as e:
-                            logger.error(f"GROUP {g} 微博推送失败 {type(e)}: {e}")
-                        await sleep(0.5)
+                    except Exception as e:
+                        logger.error(f"GROUP {g} 微博推送失败 {type(e)}: {e}")
 
 
 @scheduler.scheduled_job("cron", second="0", minute="0", hour="5")
