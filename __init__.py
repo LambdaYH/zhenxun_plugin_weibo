@@ -1,5 +1,5 @@
 import os
-from asyncio import sleep
+from asyncio import sleep, create_task, gather
 from utils.manager import group_manager
 from services.log import logger
 from utils.utils import scheduler
@@ -65,7 +65,12 @@ __plugin_task__ = {}
 _load_config()
 
 weibo_list = on_command(
-    "可订阅微博列表", aliases={"weibo-list"}, rule=to_me(), permission=GROUP, priority=5
+    "可订阅微博列表",
+    aliases={"weibo-list"},
+    rule=to_me(),
+    permission=GROUP,
+    priority=5,
+    block=True,
 )
 
 driver: Driver = get_driver()
@@ -73,10 +78,12 @@ driver: Driver = get_driver()
 
 @driver.on_startup
 async def _():
+    tasks = []
     for _, task_obj in tasks_dict.items():
         spiders = task_obj["spiders"]
         for spider in spiders:
-            await spider.init()
+            tasks.append(create_task(spider.init()))
+    await gather(*tasks)
 
 
 @weibo_list.handle()
@@ -89,7 +96,9 @@ async def _(event: GroupMessageEvent):
         for user in task_obj["users"]:
             tmp += " " + user
         ret.append(tmp)
-    await weibo_list.finish(image(b64=(await text2image(msg + "\n\n".join(ret))).pic2bs4()))
+    await weibo_list.finish(
+        image(b64=(await text2image(msg + "\n\n".join(ret))).pic2bs4())
+    )
 
 
 def wb_to_message(wb):
