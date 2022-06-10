@@ -57,12 +57,14 @@ __zx_plugin_name__ = "微博推送"
 __plugin_usage__ = """
 usage：
     自动推送微博（可推送范围由维护者设定）
+    发送[可订阅微博列表]（需要at）可查看订阅列表
 """.strip()
 __plugin_des__ = "自动推送微博（可推送范围由维护者设定）"
 __plugin_version__ = 0.1
 __plugin_author__ = "migang"
 __plugin_task__ = {}
 _load_config()
+__plugin_settings__ = {"cmd": ["微博推送"]}
 
 weibo_list = on_command(
     "可订阅微博列表",

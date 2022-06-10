@@ -35,7 +35,7 @@ class WeiboSpider(object):
         self.received_weibo_ids = []
         self.__recent = False
         self.record_file_path = weibo_record_path / f"{self.user_id}.json"
-        self.user_name = ""
+        self.user_name = config["nickname"]
         try:
             with open(self.record_file_path, "r", encoding="UTF-8") as f:
                 self.received_weibo_ids = json.load(f)
