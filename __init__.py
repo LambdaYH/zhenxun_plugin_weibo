@@ -91,7 +91,7 @@ async def _():
 @weibo_list.handle()
 async def _(event: GroupMessageEvent):
     group_id = event.group_id
-    msg = "以下为可订阅微博列表，请发送[开启 xxx]来订阅\n=====================\n"
+    msg = "\n以下为可订阅微博列表，请发送[开启 xxx]来订阅\n=====================\n"
     ret = []
     for task, task_obj in tasks_dict.items():
         tmp = f'{__plugin_task__[task]}[{"√" if await group_manager.check_group_task_status(group_id, task) else "×"}]:'
@@ -108,7 +108,10 @@ def wb_to_message(wb):
     id = wb["id"]
     time = wb["created_at"]
     if "retweet" in wb:
-        msg = f"{msg}\n{wb['text']}\n=======转发微博======="
+        retweet_screenname = wb["retweet"]["screen_name"]
+        hanzi_num = (len(retweet_screenname.encode()) - len(retweet_screenname)) // 2
+        len_half = (14 - (len(retweet_screenname) + hanzi_num)) // 2
+        msg = f"{msg}\n{wb['text']}\n{max(len_half, 1) * '='}转发@{retweet_screenname}{max(len_half, 1) * '='}"
         wb = wb["retweet"]
     msg += f"\n{wb['text']}"
     if len(wb["pics"]) > 0:
