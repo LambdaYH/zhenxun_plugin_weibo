@@ -1,4 +1,5 @@
 import os
+from random import shuffle
 from asyncio import sleep, create_task, gather
 from utils.manager import group_manager
 from services.log import logger
@@ -14,6 +15,7 @@ from nonebot.rule import to_me
 from utils.message_builder import image
 from .weibo_spider import WeiboSpider
 from .exception import *
+from configs.config import Config
 from nonebot import Driver, get_driver, get_bot
 from time import strftime, localtime
 
@@ -61,10 +63,18 @@ usage：
 """.strip()
 __plugin_des__ = "自动推送微博（可推送范围由维护者设定）"
 __plugin_version__ = 0.1
+__plugin_cmd__ = ["可订阅微博列表"]
 __plugin_author__ = "migang"
 __plugin_task__ = {}
 _load_config()
 __plugin_settings__ = {"cmd": ["微博推送"]}
+__plugin_configs__ = {
+    "forward_mode": {
+        "value": False,
+        "help": "是否以转发模式推送微博，当配置项为true时将以转发模式推送",  # 配置项说明，为空时则不添加配置项说明注释
+        "default_value": False,
+    }
+}
 
 weibo_list = on_command(
     "可订阅微博列表",
@@ -76,6 +86,7 @@ weibo_list = on_command(
 )
 
 driver: Driver = get_driver()
+forward_mode = Config.get_config("zhenxun_plugin_weibo", "FORWARD_MODE")
 
 
 @driver.on_startup
@@ -108,10 +119,7 @@ def wb_to_message(wb):
     id = wb["id"]
     time = wb["created_at"]
     if "retweet" in wb:
-        retweet_screenname = wb["retweet"]["screen_name"]
-        hanzi_num = (len(retweet_screenname.encode()) - len(retweet_screenname)) // 2
-        len_half = (14 - (len(retweet_screenname) + hanzi_num)) // 2
-        msg = f"{msg}\n{wb['text']}\n{max(len_half, 1) * '='}转发@{retweet_screenname}{max(len_half, 1) * '='}"
+        msg = f"{msg}\n{wb['text']}\n=========转发=========\n转发@{wb['retweet']['screen_name']}"
         wb = wb["retweet"]
     msg += f"\n{wb['text']}"
     if len(wb["pics"]) > 0:
@@ -133,7 +141,7 @@ def wb_to_message(wb):
     return msg
 
 
-@scheduler.scheduled_job("interval", seconds=80, jitter=10)
+@scheduler.scheduled_job("interval", seconds=90, jitter=10)
 async def _():
     for task, task_obj in tasks_dict.items():
         weibos = []
@@ -150,12 +158,31 @@ async def _():
             bot = get_bot()
             gl = await bot.get_group_list()
             gl = [g["group_id"] for g in gl]
+            shuffle(gl)
+            if forward_mode:
+                weibos = [
+                    {
+                        "type": "node",
+                        "data": {
+                            "name": f"微博威",
+                            "uin": f"{bot.self_id}",
+                            "content": weibo,
+                        },
+                    }
+                    for weibo in weibos
+                ]
             for g in gl:
                 if await group_manager.check_group_task_status(g, task):
                     try:
-                        for weibo in weibos:
-                            await sleep(0.5)
-                            await bot.send_group_msg(group_id=g, message=weibo)
+                        if forward_mode:
+                            await sleep(0.7)
+                            await bot.send_group_forward_msg(
+                                group_id=g, messages=weibos
+                            )
+                        else:
+                            for weibo in weibos:
+                                await sleep(0.7)
+                                await bot.send_group_msg(group_id=g, message=weibo)
                     except Exception as e:
                         logger.error(f"GROUP {g} 微博推送失败 {type(e)}: {e}")
 
