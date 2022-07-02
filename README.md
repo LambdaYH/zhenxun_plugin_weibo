@@ -2,6 +2,7 @@
 移植自[KokkoroBot-Multi-Platform](https://github.com/zzbslayer/KokkoroBot-Multi-Platform)
 ## 使用
 在插件目录下的weibo_config.json添加用户配置
+
 config.yaml改变forward_mode配置项来设置是否以转发模式推送微博
 > 首次使用需要重启一次才可以在group_manager.json中增加配置项
 ```
