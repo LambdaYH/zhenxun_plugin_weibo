@@ -1,10 +1,12 @@
 # zhenxun_plugin_weibo
 移植自[KokkoroBot-Multi-Platform](https://github.com/zzbslayer/KokkoroBot-Multi-Platform)
 ## 使用
-在插件目录下的weibo_config.yaml添加用户配置
+**在插件目录下的`weibo_config.yaml`中配置微博订阅项**
 
-config.yaml改变forward_mode配置项来设置是否以转发模式推送微博
-> 首次使用需要重启一次才可以在group_manager.json中增加配置项
+**`config.yaml`中改变插件的`FORWARD_MODE`配置项来设置是否以转发模式推送微博**
+> ~首次使用需要重启一次才可以在group_manager.json中增加配置项~
+
+以下为微博订阅项说明
 ```yaml
 weibo-ff14:                         # 对应到config.yaml中_task下的DEFAULT_WEIBO_FF14
   desciption: 最终幻想14微博推送    # 群内开关，在群被动状态中可以查看，使用[开启/关闭 最终幻想14微博推送]即刻控制
