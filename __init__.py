@@ -69,7 +69,6 @@ __plugin_configs__ = {
     }
 }
 
-print(__plugin_task__)
 
 weibo_list = on_command(
     "可订阅微博列表",
