@@ -23,6 +23,7 @@ weibo-ff14:                         # 对应到config.yaml中_task下的DEFAULT_
 ```
 
 ## 如何获取user_id
+控制台输入`$CONFIG.oid`
 ![](images/获取uid.gif)
 
 ## 指令
