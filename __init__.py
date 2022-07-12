@@ -18,11 +18,7 @@ from .exception import *
 from configs.config import Config
 from nonebot import Driver, get_driver, get_bot
 from time import strftime, localtime
-
-try:
-    import ujson as json
-except:
-    import json
+import yaml
 
 tasks_dict = {}
 
@@ -30,29 +26,26 @@ tasks_dict = {}
 def _load_config():
     (TEMP_PATH / "weibo").mkdir(parents=True, exist_ok=True)
     with open(
-        os.path.join(os.path.abspath(os.path.dirname(__file__)), "weibo_config.json"),
+        os.path.join(os.path.abspath(os.path.dirname(__file__)), "weibo_config.yaml"),
         "r",
         encoding="utf8",
     ) as f:
-        configs = json.load(f)
-    for config in configs:
-        task_name = config["task_name"]
-        enable_on_default = config.get("enable_on_default", False)
-        users = config["users"]
+        configs = yaml.safe_load(f)
+    for task_name, v in configs.items():
+        enable_on_default = v["enable_on_default"]
+        users = v["users"]
         task_spider_list = []
-        user_list = []
         for user in users:
             wb_spider = WeiboSpider(user)
             task_spider_list.append(wb_spider)
-            user_list.append(user["nickname"])
-        __plugin_task__[task_name] = config["desciption"]
+        __plugin_task__[task_name] = v["desciption"]
         Config.add_plugin_config(
             "_task",
             f"default_{task_name}",
             enable_on_default,
-            help_=f"被动 {config['desciption']} 进群默认开关状态",
+            help_=f"被动 {v['desciption']} 进群默认开关状态",
         )
-        tasks_dict[task_name] = {"spiders": task_spider_list, "users": user_list}
+        tasks_dict[task_name] = task_spider_list
 
 
 __zx_plugin_name__ = "微博推送"
@@ -76,6 +69,8 @@ __plugin_configs__ = {
     }
 }
 
+print(__plugin_task__)
+
 weibo_list = on_command(
     "可订阅微博列表",
     aliases={"weibo-list"},
@@ -92,8 +87,7 @@ forward_mode = Config.get_config("zhenxun_plugin_weibo", "FORWARD_MODE")
 @driver.on_startup
 async def _():
     tasks = []
-    for _, task_obj in tasks_dict.items():
-        spiders = task_obj["spiders"]
+    for _, spiders in tasks_dict.items():
         for spider in spiders:
             tasks.append(create_task(spider.init()))
     await gather(*tasks)
@@ -104,13 +98,13 @@ async def _(event: GroupMessageEvent):
     group_id = event.group_id
     msg = "\n以下为可订阅微博列表，请发送[开启 xxx]来订阅\n=====================\n"
     ret = []
-    for task, task_obj in tasks_dict.items():
+    for task, spiders in tasks_dict.items():
         tmp = f'{__plugin_task__[task]}[{"√" if await group_manager.check_group_task_status(group_id, task) else "×"}]:'
-        for user in task_obj["users"]:
-            tmp += " " + user
+        for spider in spiders:
+            tmp += " " + spider.get_username()
         ret.append(tmp)
     await weibo_list.finish(
-        image(b64=(await text2image(msg + "\n\n".join(ret))).pic2bs4())
+        image(b64=(await text2image(msg + "\n\n".join(ret) + "\n")).pic2bs4())
     )
 
 
@@ -141,11 +135,10 @@ def wb_to_message(wb):
     return msg
 
 
-@scheduler.scheduled_job("interval", seconds=90, jitter=10)
+@scheduler.scheduled_job("interval", seconds=120, jitter=10)
 async def _():
-    for task, task_obj in tasks_dict.items():
+    for task, spiders in tasks_dict.items():
         weibos = []
-        spiders = task_obj["spiders"]
         for spider in spiders:
             latest_weibos = await spider.get_latest_weibos()
             formatted_weibos = [wb_to_message(wb) for wb in latest_weibos]

@@ -35,7 +35,7 @@ class WeiboSpider(object):
         self.received_weibo_ids = []
         self.__recent = False
         self.record_file_path = weibo_record_path / f"{self.user_id}.json"
-        self.user_name = config["nickname"]
+        self.user_name = "Unknown"
         try:
             with open(self.record_file_path, "r", encoding="UTF-8") as f:
                 self.received_weibo_ids = json.load(f)
@@ -79,7 +79,7 @@ class WeiboSpider(object):
 
     def validate_config(self, config):
         """验证配置是否正确"""
-        exist_argument_list = ["user_id", "nickname", "filter_words"]
+        exist_argument_list = ["user_id", "filter_words"]
         true_false_argument_list = ["filter_retweet"]
 
         for argument in true_false_argument_list:

@@ -3,7 +3,7 @@ class WeiboError(Exception):
         self._msgs = [msg, *msgs]
 
     def __str__(self):
-        return '\n'.join(self._msgs)
+        return "\n".join(self._msgs)
 
     @property
     def message(self):

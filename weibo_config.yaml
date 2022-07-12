@@ -1,0 +1,45 @@
+weibo-pcr:
+  desciption: 公主连接微博推送
+  enable_on_default: false
+  users:
+  - user_id: '6603867494'
+    nickname: 公主连接官微
+    filter_retweet: false
+    filter_words: []
+
+weibo-ff14:
+  desciption: 最终幻想14微博推送
+  enable_on_default: false
+  users:
+  - user_id: '1797798792'
+    filter_retweet: false
+    filter_words:
+    - 微博抽奖平台
+  - user_id: '1794603954'
+    filter_retweet: false
+    filter_words: []
+  - user_id: '7316752765'
+    filter_retweet: false
+    filter_words: []
+
+weibo-ff14nga:
+  desciption: 最终幻想14nga微博推送
+  enable_on_default: false
+  users:
+  - user_id: '6969245713'
+    filter_retweet: true
+    filter_words: []
+    
+weibo-ShiningNikki:
+  desciption: 闪耀暖暖微博推送
+  enable_on_default: false
+  users:
+  - user_id: '6498105282'
+    filter_retweet: false
+    filter_words: []
+  - user_id: '6775494073'
+    filter_retweet: false
+    filter_words: []
+  - user_id: '6476598194'
+    filter_retweet: false
+    filter_words: []
