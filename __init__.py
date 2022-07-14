@@ -182,7 +182,6 @@ async def _():
 @scheduler.scheduled_job("cron", second="0", minute="0", hour="5")
 async def clear_spider_buffer():
     logger.info("Cleaning weibo spider buffer...")
-    for _, task_obj in tasks_dict.items():
-        spiders = task_obj["spiders"]
+    for _, spiders in tasks_dict.items():
         for spider in spiders:
             spider.clear_buffer()
