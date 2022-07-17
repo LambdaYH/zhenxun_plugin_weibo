@@ -190,10 +190,7 @@ class WeiboSpider(object):
 
     def get_text(self, text_body):
         selector = etree.HTML(text_body)
-        url_lists = selector.xpath("//a[@data-url]/@data-url")
-        url_lists += selector.xpath("//a[@href]/@href")
-        url_elems = selector.xpath('//a[@data-url]/span[@class="surl-text"]')
-        url_elems += selector.xpath("//a[@href]/span[@class='surl-text']")
+        url_elems = selector.xpath("//a[@href]/span[@class='surl-text']")
         for br in selector.xpath("br"):
             br.tail = "\n" + br.tail
         """
@@ -204,23 +201,21 @@ class WeiboSpider(object):
             <img style=\'width: 1rem;height: 1rem\' src=\'http_prefix://h5.sinaimg.cn/upload/2015/09/25/3/timeline_card_small_article_default.png\'></span>
             <span class="surl-text">本地化笔记第三期——剧情活动排期调整及版本更新内容前瞻</span>
             </a>
-
             replace <span class="surl-text">本地化笔记第三期——剧情活动排期调整及版本更新内容前瞻</span>
             with <span class="surl-text">本地化笔记第三期——剧情活动排期调整及版本更新内容前瞻(http://t.cn/A622uDbW)</span>
         """
-        for i in range(min(len(url_lists), len(url_elems))):
+        for elem in url_elems:
+            url = elem.getparent().get("href")
             if (
-                not url_elems[i].text.startswith("#")
-                and not url_elems[i].text.endswith("#")
+                not elem.text.startswith("#")
+                and not elem.text.endswith("#")
                 and (
-                    url_lists[i].startswith("https://weibo.cn/sinaurl?u=")
-                    or url_lists[i].startswith("https://video.weibo.com")
+                    url.startswith("https://weibo.cn/sinaurl?u=")
+                    or url.startswith("https://video.weibo.com")
                 )
             ):
-                url_lists[i] = unquote(
-                    url_lists[i].replace("https://weibo.cn/sinaurl?u=", "")
-                )
-                url_elems[i].text = f"{url_elems[i].text}({url_lists[i]})"
+                url = unquote(url.replace("https://weibo.cn/sinaurl?u=", ""))
+                elem.text = f"{elem.text}({url})"
         return selector.xpath("string(.)")
 
     def string_to_int(self, string):
