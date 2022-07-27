@@ -215,7 +215,7 @@ class WeiboSpider(object):
                 )
             ):
                 url = unquote(url.replace("https://weibo.cn/sinaurl?u=", ""))
-                elem.text = f"{elem.text}({url})"
+                elem.text = f"{elem.text}({url} )"
         return selector.xpath("string(.)")
 
     def string_to_int(self, string):

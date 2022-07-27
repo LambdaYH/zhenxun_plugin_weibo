@@ -112,7 +112,7 @@ def wb_to_message(wb):
     id = wb["id"]
     time = wb["created_at"]
     if "retweet" in wb:
-        msg = f"{msg}\n{wb['text']}\n=========转发=========\n转发@{wb['retweet']['screen_name']}"
+        msg = f"{msg}\n{wb['text']}\n=========转发=========\n>>转发@{wb['retweet']['screen_name']}"
         wb = wb["retweet"]
     msg += f"\n{wb['text']}"
     if len(wb["pics"]) > 0:
