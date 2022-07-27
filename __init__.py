@@ -64,7 +64,7 @@ __plugin_settings__ = {"cmd": ["微博推送"]}
 __plugin_configs__ = {
     "forward_mode": {
         "value": False,
-        "help": "是否以转发模式推送微博，当配置项为true时将以转发模式推送",  # 配置项说明，为空时则不添加配置项说明注释
+        "help": "是否以转发模式推送微博，当配置项为true时将以转发模式推送",
         "default_value": False,
     }
 }
