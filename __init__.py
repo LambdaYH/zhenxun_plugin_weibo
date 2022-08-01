@@ -109,7 +109,8 @@ async def _(event: GroupMessageEvent):
 
 def wb_to_message(wb):
     msg = f"{wb['screen_name']}'s Weibo:\n====================="
-    id = wb["id"]
+    # id = wb["id"]
+    bid = wb["bid"]
     time = wb["created_at"]
     if "retweet" in wb:
         msg = f"{msg}\n{wb['text']}\n=========转发=========\n>>转发@{wb['retweet']['screen_name']}"
@@ -129,7 +130,7 @@ def wb_to_message(wb):
         for img in video_imgs:
             msg += img
 
-    msg += f"\nURL:https://m.weibo.cn/detail/{id}\n时间: {strftime('%Y-%m-%d %H:%M', localtime(time))}"
+    msg += f"\nURL:https://m.weibo.cn/detail/{bid}\n时间: {strftime('%Y-%m-%d %H:%M', localtime(time))}"
 
     return msg
 

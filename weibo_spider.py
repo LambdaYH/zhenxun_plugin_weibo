@@ -278,7 +278,7 @@ class WeiboSpider(object):
         else:
             weibo["screen_name"] = ""
         weibo["id"] = weibo_info["id"]
-        # weibo["bid"] = weibo_info["bid"]
+        weibo["bid"] = weibo_info["bid"]
         text_body = weibo_info["text"]
         text_body = text_body.replace("<br/>", "\n").replace("<br />", "\n")
 
@@ -320,7 +320,7 @@ class WeiboSpider(object):
             weibo_info = info["mblog"]
             weibo_id = weibo_info["id"]
             retweeted_status = weibo_info.get("retweeted_status")
-            is_long = weibo_info.get("isLongText")
+            is_long = weibo_info.get("isLongText") or weibo_info.get("pic_num", 0) > 9
             if is_long:
                 weibo = await self.get_long_weibo(weibo_id)
                 if not weibo:
@@ -329,7 +329,10 @@ class WeiboSpider(object):
                 weibo = self.parse_weibo(weibo_info)
             if retweeted_status and retweeted_status.get("id"):  # 转发
                 retweet_id = retweeted_status.get("id")
-                is_long_retweet = retweeted_status.get("isLongText")
+                is_long_retweet = (
+                    retweeted_status.get("isLongText")
+                    or retweeted_status.get("pic_num", 0) > 9
+                )
                 if is_long_retweet:
                     retweet = await self.get_long_weibo(retweet_id)
                     if not retweet:
