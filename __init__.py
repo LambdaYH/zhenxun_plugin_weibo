@@ -89,7 +89,11 @@ async def _():
     for _, spiders in tasks_dict.items():
         for spider in spiders:
             tasks.append(create_task(spider.init()))
-    await gather(*tasks)
+    try:
+        await gather(*tasks)
+    except Exception as e:
+        logger.error(f"微博推送初始化异常，本次运行中将停用推送: {e}")
+        tasks_dict.clear()
 
 
 @weibo_list.handle()
