@@ -4,9 +4,7 @@ import sys
 import httpx
 import asyncio
 import time
-import calendar
 from urllib.parse import unquote
-from datetime import datetime
 
 from lxml import etree
 from services.log import logger
@@ -20,7 +18,6 @@ except:
 
 http_prefix = "https"
 api_url = f"{http_prefix}://m.weibo.cn/api/container/getIndex"
-month = {month: index for index, month in enumerate(calendar.month_abbr) if month}
 weibo_record_path = TEMP_PATH / "weibo"
 weibo_id_name_file = TEXT_PATH / "weibo_id_name.json"
 
@@ -249,19 +246,8 @@ class WeiboSpider(object):
 
     def standardize_date(self, created_at):
         """标准化微博发布时间"""
-        created_at = created_at.split(" ")
-        h_m_s = list(map(int, created_at[3].split(":")))
-        created_at = time.mktime(
-            datetime(
-                int(created_at[5]),
-                month[created_at[1]],
-                int(created_at[2]),
-                h_m_s[0],
-                h_m_s[1],
-                h_m_s[2],
-                0,
-            ).timetuple()
-        )
+        ts = time.strptime(created_at.replace("+0800 ", ""), "%c")
+        created_at = time.mktime(ts)
         deltaTime = time.time() - created_at
         if deltaTime <= 7200:
             self.__recent = True
