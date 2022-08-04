@@ -44,7 +44,7 @@ class WeiboSpider(object):
         try:
             with open(weibo_id_name_file, "r", encoding="UTF-8") as f:
                 id_name_map = json.load(f)
-            if id_name_map.get(self.user_id):
+            if self.user_id in id_name_map:
                 self.user_name = id_name_map[self.user_id]
         except FileNotFoundError:
             pass
@@ -58,7 +58,7 @@ class WeiboSpider(object):
                 r = await client.get(api_url, params=params, timeout=20.0)
                 if r.status_code == 200:
                     return r.json()
-                await asyncio.sleep(random.randint(6, 10))
+                await asyncio.sleep(random.randint(2, 6))
 
     async def init(self):
         self.__init = True
