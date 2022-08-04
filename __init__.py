@@ -1,5 +1,5 @@
-import os
 from random import shuffle
+from pathlib import Path
 from asyncio import sleep, create_task, gather
 from utils.manager import group_manager
 from services.log import logger
@@ -10,7 +10,7 @@ from configs.config import Config
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot import on_command
 from nonebot.adapters.onebot.v11.permission import GROUP
-from configs.path_config import TEMP_PATH
+from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
 from utils.message_builder import image
 from .weibo_spider import WeiboSpider
@@ -20,13 +20,20 @@ from nonebot import Driver, get_driver, get_bot
 from time import strftime, localtime
 import yaml
 
+try:
+    import ujson as json
+except:
+    import json
+
+from .weibo_spider import weibo_record_path, weibo_id_name_file
+
 tasks_dict = {}
 
 
 def _load_config():
-    (TEMP_PATH / "weibo").mkdir(parents=True, exist_ok=True)
+    weibo_record_path.mkdir(parents=True, exist_ok=True)
     with open(
-        os.path.join(os.path.abspath(os.path.dirname(__file__)), "weibo_config.yaml"),
+        Path(__file__).parent / "weibo_config.yaml",
         "r",
         encoding="utf8",
     ) as f:
@@ -56,7 +63,7 @@ usage：
 """.strip()
 __plugin_des__ = "自动推送微博（可推送范围由维护者设定）"
 __plugin_version__ = 0.1
-__plugin_cmd__ = ["可订阅微博列表"]
+__plugin_cmd__ = ["可订阅微博列表", "更新微博用户名 [_superuser]"]
 __plugin_author__ = "migang"
 __plugin_task__ = {}
 _load_config()
@@ -79,6 +86,14 @@ weibo_list = on_command(
     block=True,
 )
 
+weibo_update_username = on_command(
+    "更新微博用户名",
+    rule=to_me(),
+    permission=SUPERUSER,
+    priority=5,
+    block=True,
+)
+
 driver: Driver = get_driver()
 forward_mode = Config.get_config("zhenxun_plugin_weibo", "FORWARD_MODE")
 
@@ -91,9 +106,9 @@ async def _():
             tasks.append(create_task(spider.init()))
     try:
         await gather(*tasks)
+        logger.info("微博推送初始化完成")
     except Exception as e:
-        logger.error(f"微博推送初始化异常，本次运行中将停用推送: {e}")
-        tasks_dict.clear()
+        logger.error(f"微博推送初始化异常: {e}")
 
 
 @weibo_list.handle()
@@ -109,6 +124,13 @@ async def _(event: GroupMessageEvent):
     await weibo_list.finish(
         image(b64=(await text2image(msg + "\n\n".join(ret) + "\n")).pic2bs4())
     )
+
+
+@weibo_update_username.handle()
+async def _():
+    await weibo_update_username.send("开始更新微博用户名")
+    await update_user_name()
+    await weibo_update_username.send("微博用户名更新结束")
 
 
 def wb_to_message(wb):
@@ -190,3 +212,20 @@ async def clear_spider_buffer():
     for _, spiders in tasks_dict.items():
         for spider in spiders:
             spider.clear_buffer()
+
+
+@scheduler.scheduled_job("cron", second="0", minute="0", hour="4")
+async def update_user_name():
+    logger.info("Updating weibo user_name...")
+    id_name_map = {}
+    try:
+        with open(weibo_id_name_file, "r", encoding="UTF-8") as f:
+            id_name_map = json.load(f)
+    except FileNotFoundError:
+        pass
+    for _, spiders in tasks_dict.items():
+        for spider in spiders:
+            if uname := await spider.update_username():
+                id_name_map[spider.get_userid()] = uname
+    with open(weibo_id_name_file, "w", encoding="utf8") as f:
+        json.dump(id_name_map, f, indent=4, ensure_ascii=False)
