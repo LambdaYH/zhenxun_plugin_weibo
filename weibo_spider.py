@@ -1,18 +1,17 @@
 import random
 import re
 import sys
+import httpx
 import asyncio
 import time
 import calendar
 from urllib.parse import unquote
-from collections import OrderedDict
 from datetime import datetime
 
-from utils.http_utils import AsyncHttpx
 from lxml import etree
 from services.log import logger
 from .exception import *
-from configs.path_config import TEMP_PATH
+from configs.path_config import TEMP_PATH, TEXT_PATH
 
 try:
     import ujson as json
@@ -23,6 +22,7 @@ http_prefix = "https"
 api_url = f"{http_prefix}://m.weibo.cn/api/container/getIndex"
 month = {month: index for index, month in enumerate(calendar.month_abbr) if month}
 weibo_record_path = TEMP_PATH / "weibo"
+weibo_id_name_file = TEXT_PATH / "weibo_id_name.json"
 
 
 class WeiboSpider(object):
@@ -35,31 +35,50 @@ class WeiboSpider(object):
         self.received_weibo_ids = []
         self.__recent = False
         self.record_file_path = weibo_record_path / f"{self.user_id}.json"
-        self.user_name = "Unknown"
+        self.user_name = self.user_id
         try:
             with open(self.record_file_path, "r", encoding="UTF-8") as f:
                 self.received_weibo_ids = json.load(f)
         except FileNotFoundError:
             pass
+        try:
+            with open(weibo_id_name_file, "r", encoding="UTF-8") as f:
+                id_name_map = json.load(f)
+            if id_name_map.get(self.user_id):
+                self.user_name = id_name_map[self.user_id]
+        except FileNotFoundError:
+            pass
 
     async def get_json(self, params):
-        """获取网页中json数据"""
-        r = await AsyncHttpx.get(
-            api_url,
-            params=params,
-            timeout=20.0,
-        )
-        return r.json()
+        """
+        获取网页中json数据
+        """
+        async with httpx.AsyncClient() as client:
+            for _ in range(5):
+                r = await client.get(api_url, params=params, timeout=20.0)
+                if r.status_code == 200:
+                    return r.json()
+                await asyncio.sleep(random.randint(6, 10))
 
     async def init(self):
         self.__init = True
-        js = await self.get_json({"containerid": f"100505{self.user_id}"})
-        if js["ok"]:
-            info = js["data"]["userInfo"]
-            self.user_name = info.get("screen_name", "")
         if not self.record_file_path.exists():
             await self.get_latest_weibos()
         self.__init = False
+
+    async def update_username(self):
+        try:
+            js = await self.get_json({"containerid": f"100505{self.user_id}"})
+            if js["ok"]:
+                info = js["data"]["userInfo"]
+                self.user_name = info.get("screen_name")
+        except Exception as e:
+            logger.warning(f"微博用户{self.user_id}更新user_name异常: {e}")
+            return None
+        return self.user_name
+
+    def get_userid(self):
+        return self.user_id
 
     def get_username(self):
         return self.user_name
@@ -272,7 +291,7 @@ class WeiboSpider(object):
         return weibo
 
     def parse_weibo(self, weibo_info):
-        weibo = OrderedDict()
+        weibo = {}
         if "user" in weibo_info:
             weibo["screen_name"] = weibo_info["user"]["screen_name"]
         else:
@@ -297,22 +316,23 @@ class WeiboSpider(object):
 
     async def get_long_weibo(self, id):
         """获取长微博"""
-        for _ in range(5):
-            url = f"{http_prefix}://m.weibo.cn/detail/{id}"
-            html = await AsyncHttpx.get(url, timeout=15)
-            html = html.text
-            p = re.compile(
-                r"var \$render_data = (.*)[\s\S]{7}{};", re.MULTILINE | re.DOTALL
-            )
-            html = p.findall(html)
-            if html:
-                html = html[0]
-                js = json.loads(html[1:-1])
-                weibo_info = js.get("status")
-                if weibo_info:
-                    weibo = self.parse_weibo(weibo_info)
-                    return weibo
-            await asyncio.sleep(random.randint(6, 10))
+        async with httpx.AsyncClient() as client:
+            for _ in range(5):
+                url = f"{http_prefix}://m.weibo.cn/detail/{id}"
+                html = await client.get(url, timeout=15)
+                html = html.text
+                p = re.compile(
+                    r"var \$render_data = (.*)[\s\S]{7}{};", re.MULTILINE | re.DOTALL
+                )
+                html = p.findall(html)
+                if html:
+                    html = html[0]
+                    js = json.loads(html[1:-1])
+                    weibo_info = js.get("status")
+                    if weibo_info:
+                        weibo = self.parse_weibo(weibo_info)
+                        return weibo
+                await asyncio.sleep(random.randint(6, 10))
 
     async def get_one_weibo(self, info):
         """获取一条微博的全部信息"""
