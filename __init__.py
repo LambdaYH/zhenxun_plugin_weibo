@@ -1,9 +1,11 @@
 from random import shuffle
+from typing import Dict
 from pathlib import Path
 from asyncio import sleep, create_task, gather
 from utils.manager import group_manager
 from services.log import logger
 from utils.utils import scheduler
+from utils.http_utils import AsyncPlaywright
 from utils.image_utils import text2image
 from utils.message_builder import image
 from configs.config import Config
@@ -73,7 +75,12 @@ __plugin_configs__ = {
         "value": False,
         "help": "是否以转发模式推送微博，当配置项为true时将以转发模式推送",
         "default_value": False,
-    }
+    },
+    "text_mode": {
+        "value": False,
+        "help": "是否以纯文字形式推送微博，当配置项为true时将以纯文字形式推送，反之则尽可能推送图片",
+        "default_value": False,
+    },
 }
 
 
@@ -95,7 +102,8 @@ weibo_update_username = on_command(
 )
 
 driver: Driver = get_driver()
-forward_mode = Config.get_config("zhenxun_plugin_weibo", "FORWARD_MODE")
+forward_mode = Config.get_config(Path(__file__).parent.name, "FORWARD_MODE")
+text_mode = Config.get_config(Path(__file__).parent.name, "TEXT_MODE")
 
 
 @driver.on_startup
@@ -133,7 +141,7 @@ async def _():
     await weibo_update_username.send("微博用户名更新结束")
 
 
-def wb_to_message(wb):
+def wb_to_text(wb: Dict):
     msg = f"{wb['screen_name']}'s Weibo:\n====================="
     # id = wb["id"]
     bid = wb["bid"]
@@ -161,13 +169,53 @@ def wb_to_message(wb):
     return msg
 
 
+async def wb_to_image(wb: Dict) -> bytes:
+    msg = f"{wb['screen_name']}'s Weibo:\n"
+    url = f"https://m.weibo.cn/detail/{wb['bid']}"
+    time = wb["created_at"]
+    try:
+        page = await AsyncPlaywright._new_page(
+            is_mobile=True, viewport={"width": 2048, "height": 2732}
+        )
+        await page.goto(
+            url,
+            wait_until="networkidle",
+        )
+        await page.wait_for_selector(".wrap", state="attached", timeout=8 * 1000)
+        await page.eval_on_selector(
+            selector=".wrap",
+            expression="(el) => el.style.display = 'none'",
+        )
+        card = await page.wait_for_selector(
+            f"xpath=//div[@class='card m-panel card9 f-weibo']", timeout=6 * 1000
+        )
+        img = await card.screenshot()
+        return (
+            msg
+            + image(img)
+            + f"\n{url}\n时间: {strftime('%Y-%m-%d %H:%M', localtime(time))}"
+        )
+    except Exception as e:
+        logger.warning(f"截取微博主页失败: {e}")
+    finally:
+        if page:
+            await page.close()
+    return None
+
+
+async def process_wb(wb):
+    if not text_mode and (msg := await wb_to_image(wb)):
+        return msg
+    return wb_to_text(wb)
+
+
 @scheduler.scheduled_job("interval", seconds=120, jitter=10)
 async def _():
     for task, spiders in tasks_dict.items():
         weibos = []
         for spider in spiders:
             latest_weibos = await spider.get_latest_weibos()
-            formatted_weibos = [wb_to_message(wb) for wb in latest_weibos]
+            formatted_weibos = [(await process_wb(wb)) for wb in latest_weibos]
             if l := len(formatted_weibos):
                 logger.info(f"成功获取@{spider.get_username()}的新微博{l}条")
             else:
