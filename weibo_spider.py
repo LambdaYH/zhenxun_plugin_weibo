@@ -29,6 +29,7 @@ class WeiboSpider(object):
         self.filter_retweet = config["filter_retweet"]
         self.user_id = config["user_id"]
         self.filter_words = config["filter_words"]
+        self.format = config["format"]
         self.received_weibo_ids = []
         self.__recent = False
         self.record_file_path = weibo_record_path / f"{self.user_id}.json"
@@ -80,6 +81,9 @@ class WeiboSpider(object):
     def get_username(self):
         return self.user_name
 
+    def get_format(self):
+        return self.format
+
     def save(self):
         with open(self.record_file_path, "w", encoding="utf8") as f:
             json.dump(self.received_weibo_ids, f, indent=4, ensure_ascii=False)
@@ -95,7 +99,7 @@ class WeiboSpider(object):
 
     def validate_config(self, config):
         """验证配置是否正确"""
-        exist_argument_list = ["user_id", "filter_words"]
+        exist_argument_list = ["user_id", "filter_words", "format"]
         true_false_argument_list = ["filter_retweet"]
 
         for argument in true_false_argument_list:

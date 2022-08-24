@@ -40,11 +40,18 @@ def _load_config():
         encoding="utf8",
     ) as f:
         configs = yaml.safe_load(f)
+    default_format = Config.get_config(Path(__file__).parent.name, "DEFAULT_FORMAT")
     for task_name, v in configs.items():
         enable_on_default = v["enable_on_default"]
         users = v["users"]
+        if "format" in v:
+            cur_format = v["format"]
+        else:
+            cur_format = default_format
         task_spider_list = []
         for user in users:
+            if "format" not in user:
+                user["format"] = cur_format
             wb_spider = WeiboSpider(user)
             task_spider_list.append(wb_spider)
         __plugin_task__[task_name] = v["desciption"]
@@ -76,10 +83,10 @@ __plugin_configs__ = {
         "help": "是否以转发模式推送微博，当配置项为true时将以转发模式推送",
         "default_value": False,
     },
-    "text_mode": {
-        "value": False,
-        "help": "是否以纯文字形式推送微博，当配置项为true时将以纯文字形式推送，反之则尽可能推送图片",
-        "default_value": False,
+    "default_format": {
+        "value": 1,
+        "help": "默认推送格式：0 文本，1 图片",
+        "default_value": 1,
     },
 }
 
@@ -103,7 +110,6 @@ weibo_update_username = on_command(
 
 driver: Driver = get_driver()
 forward_mode = Config.get_config(Path(__file__).parent.name, "FORWARD_MODE")
-text_mode = Config.get_config(Path(__file__).parent.name, "TEXT_MODE")
 
 
 @driver.on_startup
@@ -126,9 +132,12 @@ async def _(event: GroupMessageEvent):
     ret = []
     for task, spiders in tasks_dict.items():
         tmp = f'{__plugin_task__[task]}[{"√" if await group_manager.check_group_task_status(group_id, task) else "×"}]:'
+        users = []
         for spider in spiders:
-            tmp += " " + spider.get_username()
-        ret.append(tmp)
+            users.append(
+                f"{spider.get_username()}[{'图片' if spider.get_format() == 1 else '文本'}]"
+            )
+        ret.append(tmp + " ".join(users))
     await weibo_list.finish(
         image(b64=(await text2image(msg + "\n\n".join(ret) + "\n")).pic2bs4())
     )
@@ -203,8 +212,8 @@ async def wb_to_image(wb: Dict) -> bytes:
     return None
 
 
-async def process_wb(wb):
-    if not text_mode and (msg := await wb_to_image(wb)):
+async def process_wb(format: int, wb: Dict):
+    if format == 1 and (msg := await wb_to_image(wb)):
         return msg
     return wb_to_text(wb)
 
@@ -215,7 +224,8 @@ async def _():
         weibos = []
         for spider in spiders:
             latest_weibos = await spider.get_latest_weibos()
-            formatted_weibos = [(await process_wb(wb)) for wb in latest_weibos]
+            format = spider.get_format()
+            formatted_weibos = [(await process_wb(format, wb)) for wb in latest_weibos]
             if l := len(formatted_weibos):
                 logger.info(f"成功获取@{spider.get_username()}的新微博{l}条")
             else:
