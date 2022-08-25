@@ -182,33 +182,35 @@ async def wb_to_image(wb: Dict) -> bytes:
     msg = f"{wb['screen_name']}'s Weibo:\n"
     url = f"https://m.weibo.cn/detail/{wb['bid']}"
     time = wb["created_at"]
-    try:
-        page = await AsyncPlaywright._new_page(
-            is_mobile=True, viewport={"width": 2048, "height": 2732}
-        )
-        await page.goto(
-            url,
-            wait_until="networkidle",
-        )
-        await page.wait_for_selector(".wrap", state="attached", timeout=8 * 1000)
-        await page.eval_on_selector(
-            selector=".wrap",
-            expression="(el) => el.style.display = 'none'",
-        )
-        card = await page.wait_for_selector(
-            f"xpath=//div[@class='card m-panel card9 f-weibo']", timeout=6 * 1000
-        )
-        img = await card.screenshot()
-        return (
-            msg
-            + image(img)
-            + f"\n{url}\n时间: {strftime('%Y-%m-%d %H:%M', localtime(time))}"
-        )
-    except Exception as e:
-        logger.warning(f"截取微博主页失败: {e}")
-    finally:
-        if page:
-            await page.close()
+    for _ in range(3):
+        try:
+            page = await AsyncPlaywright._new_page(
+                is_mobile=True, viewport={"width": 2048, "height": 2732}
+            )
+            await page.goto(
+                url,
+                wait_until="networkidle",
+            )
+            await page.wait_for_selector(".wrap", state="attached", timeout=8 * 1000)
+            await page.eval_on_selector(
+                selector=".wrap",
+                expression="(el) => el.style.display = 'none'",
+            )
+            card = await page.wait_for_selector(
+                f"xpath=//div[@class='card m-panel card9 f-weibo']", timeout=6 * 1000
+            )
+            img = await card.screenshot()
+            return (
+                msg
+                + image(img)
+                + f"\n{url}\n时间: {strftime('%Y-%m-%d %H:%M', localtime(time))}"
+            )
+        except Exception as e:
+            logger.warning(f"截取微博主页失败: {e}")
+            sleep(1.1)
+        finally:
+            if page:
+                await page.close()
     return None
 
 
