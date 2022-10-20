@@ -88,6 +88,11 @@ __plugin_configs__ = {
         "help": "默认推送格式：0 文本，1 图片",
         "default_value": 1,
     },
+    "cookie": {
+        "value": None,
+        "help": "添加cookie后可以获取到更多的微博",
+        "default_value": None,
+    },
 }
 
 

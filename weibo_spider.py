@@ -4,12 +4,14 @@ import sys
 import httpx
 import asyncio
 import time
+from pathlib import Path
 from urllib.parse import unquote
 
 from lxml import etree
 from services.log import logger
 from .exception import *
 from configs.path_config import TEMP_PATH, TEXT_PATH
+from configs.config import Config
 
 try:
     import ujson as json
@@ -53,7 +55,10 @@ class WeiboSpider(object):
         """
         async with httpx.AsyncClient() as client:
             for _ in range(5):
-                r = await client.get(api_url, params=params, timeout=20.0)
+                if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
+                    r = await client.get(api_url, params=params, timeout=20.0, headers={"cookie" : cookie})
+                else:
+                    r = await client.get(api_url, params=params, timeout=20.0)
                 if r.status_code == 200:
                     return r.json()
                 await asyncio.sleep(random.randint(2, 6))
