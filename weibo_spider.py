@@ -56,7 +56,9 @@ class WeiboSpider(object):
         async with httpx.AsyncClient() as client:
             for _ in range(5):
                 if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
-                    r = await client.get(api_url, params=params, timeout=20.0, headers={"cookie" : cookie})
+                    r = await client.get(
+                        api_url, params=params, timeout=20.0, headers={"cookie": cookie}
+                    )
                 else:
                     r = await client.get(api_url, params=params, timeout=20.0)
                 if r.status_code == 200:
@@ -361,6 +363,11 @@ class WeiboSpider(object):
                 )
                 weibo["retweet"] = retweet
             weibo["created_at"] = self.standardize_date(weibo_info["created_at"])
+            weibo["only_visible_to_fans"] = (
+                "title" in weibo_info
+                and "text" in weibo_info["title"]
+                and weibo_info["title"]["text"] == "仅粉丝可见"
+            )
             return weibo
         except Exception as e:
             logger.exception(e)

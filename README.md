@@ -8,6 +8,8 @@
 **于真寻的`config.yaml`中改变插件的`DEFAULT_FORMAT`配置项来设置微博默认推送格式，可选格式为文本、图片**
 > format覆盖规则：组内用户配置项 > 推送组配置项 > 配置文件
 
+**于真寻的`config.yaml`中添加插件的`COOKIE`配置项，设置[COOKIE](#如何获取cookie)后可获取更多微博**
+
 以下为微博订阅项说明
 ```yaml
 weibo-ff14:                         # 对应到config.yaml中_task下的DEFAULT_WEIBO_FF14
@@ -31,6 +33,12 @@ weibo-ff14:                         # 对应到config.yaml中_task下的DEFAULT_
 ## 如何获取user_id
 控制台输入`$CONFIG.oid`
 ![](images/获取uid.gif)
+
+## 如何获取cookie
+1. 前往[https://passport.weibo.cn/signin/login](https://passport.weibo.cn/signin/login)登录
+2. F12打开开发者工具
+3. 访问[https://m.weibo.cn/](https://m.weibo.cn/)（CTRL+R刷新下）
+4. 复制如下选框![](images/cookie.png)
 
 ## 指令
 

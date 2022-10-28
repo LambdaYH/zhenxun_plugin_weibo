@@ -220,7 +220,7 @@ async def wb_to_image(wb: Dict) -> bytes:
 
 
 async def process_wb(format: int, wb: Dict):
-    if format == 1 and (msg := await wb_to_image(wb)):
+    if not wb["only_visible_to_fans"] and format == 1 and (msg := await wb_to_image(wb)):
         return msg
     return wb_to_text(wb)
 
