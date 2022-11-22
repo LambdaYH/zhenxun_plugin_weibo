@@ -136,7 +136,7 @@ async def _(event: GroupMessageEvent):
     msg = "\n以下为可订阅微博列表，请发送[开启 xxx]来订阅\n=====================\n"
     ret = []
     for task, spiders in tasks_dict.items():
-        tmp = f'{__plugin_task__[task]}[{"√" if await group_manager.check_group_task_status(group_id, task) else "×"}]:'
+        tmp = f'{__plugin_task__[task]}[{"√" if group_manager.check_group_task_status(group_id, task) else "×"}]:'
         users = []
         for spider in spiders:
             users.append(
@@ -256,7 +256,7 @@ async def _():
                     for weibo in weibos
                 ]
             for g in gl:
-                if await group_manager.check_group_task_status(g, task):
+                if group_manager.check_group_task_status(g, task):
                     try:
                         if forward_mode:
                             await sleep(0.7)

@@ -1,4 +1,8 @@
 # zhenxun_plugin_weibo
+<div>
+   <a href="https://github.com/HibiKier/zhenxun_bot">
+    <img src="https://img.shields.io/badge/zhenxun_bot-v0.1.6.5+-green">
+</div>
 移植自[KokkoroBot-Multi-Platform](https://github.com/zzbslayer/KokkoroBot-Multi-Platform)
 ## 使用
 **在插件目录下的`weibo_config.yaml`中配置微博订阅项**
