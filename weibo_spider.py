@@ -318,7 +318,10 @@ class WeiboSpider(object):
         async with httpx.AsyncClient() as client:
             for _ in range(5):
                 url = f"{http_prefix}://m.weibo.cn/detail/{id}"
-                html = await client.get(url, timeout=15)
+                if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
+                    html = await client.get(url, timeout=15, headers={"cookie": cookie})
+                else:
+                    html = await client.get(url, timeout=15)
                 html = html.text
                 p = re.compile(
                     r"var \$render_data = (.*)[\s\S]{7}{};", re.MULTILINE | re.DOTALL
