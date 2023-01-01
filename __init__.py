@@ -196,11 +196,11 @@ async def wb_to_image(wb: Dict) -> bytes:
                 url,
                 wait_until="networkidle",
             )
-            await page.wait_for_selector(".wrap", state="attached", timeout=8 * 1000)
-            await page.eval_on_selector(
-                selector=".wrap",
-                expression="(el) => el.style.display = 'none'",
-            )
+            # await page.wait_for_selector(".ad-wrap", state="attached", timeout=8 * 1000)
+            # await page.eval_on_selector(
+            #     selector=".ad-wrap",
+            #     expression="(el) => el.style.display = 'none'",
+            # )
             card = await page.wait_for_selector(
                 f"xpath=//div[@class='card m-panel card9 f-weibo']", timeout=6 * 1000
             )
