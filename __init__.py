@@ -28,6 +28,7 @@ except:
     import json
 
 from .weibo_spider import weibo_record_path, weibo_id_name_file
+from ._utils import sinaimgtvax, get_image_cqcode
 
 tasks_dict = {}
 
@@ -154,13 +155,7 @@ async def _():
     await update_user_name()
     await weibo_update_username.send("微博用户名更新结束")
 
-# ref: https://github.com/DIYgod/RSSHub/blob/5c7aff76a3a90d6ac5d5e7e139bc182c9c147cb6/lib/v2/weibo/utils.js#L425
-import re
-sinaimgwx_pattern = re.compile(r"(?<=\/\/)wx(?=[1-4]\.sinaimg\.cn\/)", re.I)
-def sinaimgtvax(url) -> str:
-    return re.sub(sinaimgwx_pattern, "tvax", url)
-
-def wb_to_text(wb: Dict):
+async def wb_to_text(wb: Dict):
     msg = f"{wb['screen_name']}'s Weibo:\n====================="
     # id = wb["id"]
     bid = wb["bid"]
@@ -172,14 +167,14 @@ def wb_to_text(wb: Dict):
     if len(wb["pics"]) > 0:
         image_urls = [sinaimgtvax(url) for url in wb["pics"]]
         msg += "\n"
-        res_imgs = [image(url) for url in image_urls]
+        res_imgs = [await get_image_cqcode(url) for url in image_urls]
         for img in res_imgs:
             msg += img
 
     if len(wb["video_poster_url"]) > 0:
         video_posters = [sinaimgtvax(url) for url in wb["video_poster_url"]]
         msg += "\n[视频封面]\n"
-        video_imgs = [image(url) for url in video_posters]
+        video_imgs = [await get_image_cqcode(url) for url in video_posters]
         for img in video_imgs:
             msg += img
 
@@ -227,7 +222,7 @@ async def wb_to_image(wb: Dict) -> bytes:
 async def process_wb(format: int, wb: Dict):
     if not wb["only_visible_to_fans"] and format == 1 and (msg := await wb_to_image(wb)):
         return msg
-    return wb_to_text(wb)
+    return await wb_to_text(wb)
 
 
 @scheduler.scheduled_job("interval", seconds=120, jitter=10)
