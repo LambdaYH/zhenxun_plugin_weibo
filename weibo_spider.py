@@ -23,6 +23,8 @@ api_url = f"{http_prefix}://m.weibo.cn/api/container/getIndex"
 weibo_record_path = TEMP_PATH / "weibo"
 weibo_id_name_file = TEXT_PATH / "weibo_id_name.json"
 
+user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/108.0.0.0"
+
 
 class WeiboSpider(object):
     def __init__(self, config):
@@ -34,6 +36,7 @@ class WeiboSpider(object):
         self.format = config["format"]
         self.received_weibo_ids = []
         self.__recent = False
+        self.__init = False
         self.record_file_path = weibo_record_path / f"{self.user_id}.json"
         self.user_name = self.user_id
         try:
@@ -57,10 +60,18 @@ class WeiboSpider(object):
             for _ in range(5):
                 if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
                     r = await client.get(
-                        api_url, params=params, timeout=20.0, headers={"cookie": cookie}
+                        api_url,
+                        params=params,
+                        timeout=20.0,
+                        headers={"cookie": cookie, "User-Agent": user_agent},
                     )
                 else:
-                    r = await client.get(api_url, params=params, timeout=20.0)
+                    r = await client.get(
+                        api_url,
+                        params=params,
+                        timeout=20.0,
+                        headers={"User-Agent": user_agent},
+                    )
                 if r.status_code == 200:
                     return r.json()
                 await asyncio.sleep(random.randint(2, 6))
@@ -319,9 +330,15 @@ class WeiboSpider(object):
             for _ in range(5):
                 url = f"{http_prefix}://m.weibo.cn/detail/{id}"
                 if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
-                    html = await client.get(url, timeout=15, headers={"cookie": cookie})
+                    html = await client.get(
+                        url,
+                        timeout=15,
+                        headers={"cookie": cookie, "User-Agent": user_agent},
+                    )
                 else:
-                    html = await client.get(url, timeout=15)
+                    html = await client.get(
+                        url, timeout=15, headers={"User-Agent": user_agent}
+                    )
                 html = html.text
                 p = re.compile(
                     r"var \$render_data = (.*)[\s\S]{7}{};", re.MULTILINE | re.DOTALL
@@ -384,7 +401,10 @@ class WeiboSpider(object):
                 weibos = js["data"]["cards"]
                 for w in weibos:
                     if w["card_type"] == 9:
-                        if w["mblog"]["id"] in self.received_weibo_ids:
+                        if (
+                            w["mblog"]["id"] in self.received_weibo_ids
+                            or not w.get("profile_type_id")
+                        ):
                             continue
                         wb = await self.get_one_weibo(w)
                         if wb:
