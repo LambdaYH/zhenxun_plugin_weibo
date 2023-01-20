@@ -1,7 +1,7 @@
 from random import shuffle
 from typing import Dict
 from pathlib import Path
-from asyncio import sleep, create_task, gather
+from asyncio import sleep, gather
 from utils.manager import group_manager
 from services.log import logger
 from utils.utils import scheduler
@@ -121,7 +121,7 @@ async def _():
     tasks = []
     for _, spiders in tasks_dict.items():
         for spider in spiders:
-            tasks.append(create_task(spider.init()))
+            tasks.append(spider.init())
     try:
         await gather(*tasks)
         logger.info("微博推送初始化完成")
@@ -166,14 +166,14 @@ async def wb_to_text(wb: Dict):
     if len(wb["pics"]) > 0:
         image_urls = wb["pics"]
         msg += "\n"
-        res_imgs = [await get_image_cqcode(url) for url in image_urls]
+        res_imgs = await gather(*[get_image_cqcode(url) for url in image_urls])
         for img in res_imgs:
             msg += img
 
     if len(wb["video_poster_url"]) > 0:
         video_posters = wb["video_poster_url"]
         msg += "\n[视频封面]\n"
-        video_imgs = [await get_image_cqcode(url) for url in video_posters]
+        video_imgs = await gather(*[get_image_cqcode(url) for url in video_posters])
         for img in video_imgs:
             msg += img
 

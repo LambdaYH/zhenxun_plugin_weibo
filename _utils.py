@@ -39,6 +39,7 @@ async def download_image(url: str) -> Optional[bytes]:
             except Exception as e:
                 logger.warning(f"图片[{url}]下载失败！将重试最多 5 次！\n{e}")
                 await asyncio.sleep(10)
+    return None
 
 
 async def get_image_cqcode(url: str):
