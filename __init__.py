@@ -1,4 +1,3 @@
-import yaml
 from random import shuffle
 from typing import Dict
 from pathlib import Path
@@ -19,6 +18,7 @@ from utils.message_builder import image
 from configs.config import Config
 from nonebot import Driver, get_driver, get_bot
 from time import strftime, localtime
+import yaml
 
 try:
     import ujson as json
@@ -26,7 +26,7 @@ except:
     import json
 
 from .weibo_spider import WeiboSpider, weibo_record_path, weibo_id_name_file
-from ._utils import get_image_cqcode
+from ._utils import get_image_cqcode, SendManager
 
 tasks_dict = {}
 
@@ -244,7 +244,11 @@ async def _():
         if weibos:
             bot = get_bot()
             gl = await bot.get_group_list()
-            gl = [g["group_id"] for g in gl]
+            gl = [
+                g["group_id"]
+                for g in gl
+                if group_manager.check_group_task_status(g["group_id"], task)
+            ]
             shuffle(gl)
             if forward_mode:
                 weibos = [
@@ -258,20 +262,7 @@ async def _():
                     }
                     for weibo in weibos
                 ]
-            for g in gl:
-                if group_manager.check_group_task_status(g, task):
-                    try:
-                        if forward_mode:
-                            await sleep(0.7)
-                            await bot.send_group_forward_msg(
-                                group_id=g, messages=weibos
-                            )
-                        else:
-                            for weibo in weibos:
-                                await sleep(0.7)
-                                await bot.send_group_msg(group_id=g, message=weibo)
-                    except Exception as e:
-                        logger.error(f"GROUP {g} 微博推送失败 {type(e)}: {e}")
+            await SendManager(bot, gl, weibos, forward=forward_mode).Do()
 
 
 @scheduler.scheduled_job("cron", second="0", minute="0", hour="5")
