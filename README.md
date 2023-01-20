@@ -36,8 +36,9 @@ weibo-ff14:                         # 对应到config.yaml中_task下的DEFAULT_
 ```
 
 ## 如何获取user_id
-控制台输入`$CONFIG.oid`
-![](images/获取uid.gif)
+<!-- 控制台输入`$CONFIG.oid`
+![](images/获取uid.gif) -->
+打开微博用户主页，地址栏URL显示为`https://weibo.com/u/xxxxx`，xxxxx即为user_id
 
 ## 如何获取cookie
 1. 前往[https://passport.weibo.cn/signin/login](https://passport.weibo.cn/signin/login)登录
