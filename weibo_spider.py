@@ -1,25 +1,25 @@
 import random
-import re
 import sys
 import httpx
 import asyncio
 import time
 from pathlib import Path
 from urllib.parse import unquote
-
 from lxml import etree
 from services.log import logger
-from .exception import *
+
 from configs.path_config import TEMP_PATH, TEXT_PATH
 from configs.config import Config
+
+from .exception import *
+from ._utils import sinaimgtvax
 
 try:
     import ujson as json
 except:
     import json
 
-http_prefix = "https"
-api_url = f"{http_prefix}://m.weibo.cn/api/container/getIndex"
+api_url = f"https://m.weibo.cn/api/container/getIndex"
 weibo_record_path = TEMP_PATH / "weibo"
 weibo_id_name_file = TEXT_PATH / "weibo_id_name.json"
 
@@ -35,6 +35,14 @@ class WeiboSpider(object):
         self.filter_words = config["filter_words"]
         self.format = config["format"]
         self.received_weibo_ids = []
+        self.headers = {
+            "referer": f"https://m.weibo.cn/u/{self.user_id}",
+            "MWeibo-Pwa": "1",
+            "X-Requested-With": "XMLHttpRequest",
+            "User-Agent": user_agent,
+        }
+        if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
+            self.headers["cookie"] = cookie
         self.__recent = False
         self.__init = False
         self.record_file_path = weibo_record_path / f"{self.user_id}.json"
@@ -52,39 +60,38 @@ class WeiboSpider(object):
         except FileNotFoundError:
             pass
 
-    async def get_json(self, params):
+    async def get_json(self, url, params=None):
         """
         获取网页中json数据
         """
         async with httpx.AsyncClient() as client:
-            for _ in range(5):
-                if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
+            for i in range(5):
+                try:
                     r = await client.get(
-                        api_url,
-                        params=params,
-                        timeout=20.0,
-                        headers={"cookie": cookie, "User-Agent": user_agent},
+                        url, params=params, headers=self.headers, timeout=20
                     )
-                else:
-                    r = await client.get(
-                        api_url,
-                        params=params,
-                        timeout=20.0,
-                        headers={"User-Agent": user_agent},
-                    )
-                if r.status_code == 200:
-                    return r.json()
-                await asyncio.sleep(random.randint(2, 6))
+                    if r.status_code == 200:
+                        return r.json()
+                except Exception as e:
+                    logger.warning(f"获取网页 {url} json异常，次数{i}：{e}")
+                    await asyncio.sleep(random.randint(2, 6))
+            return None
 
     async def init(self):
+        """
+        初始化
+        """
         self.__init = True
         if not self.record_file_path.exists():
             await self.get_latest_weibos()
         self.__init = False
 
     async def update_username(self):
+        """
+        更新微博用户名
+        """
         try:
-            js = await self.get_json({"containerid": f"100505{self.user_id}"})
+            js = await self.get_json(api_url, {"containerid": f"100505{self.user_id}"})
             if js["ok"]:
                 info = js["data"]["userInfo"]
                 self.user_name = info.get("screen_name")
@@ -94,12 +101,21 @@ class WeiboSpider(object):
         return self.user_name
 
     def get_userid(self):
+        """
+        获取微博用户id
+        """
         return self.user_id
 
     def get_username(self):
+        """
+        获取微博用户名
+        """
         return self.user_name
 
     def get_format(self):
+        """
+        获取微博格式，文本或图片
+        """
         return self.format
 
     def save(self):
@@ -149,9 +165,7 @@ class WeiboSpider(object):
         live_photo_list = []
         live_photo = weibo_info.get("pic_video")
         if live_photo:
-            prefix = (
-                f"{http_prefix}://video.weibo.com/media/play?livephoto=//us.sinaimg.cn/"
-            )
+            prefix = f"https://video.weibo.com/media/play?livephoto=//us.sinaimg.cn/"
             for i in live_photo.split(","):
                 if len(i.split(":")) == 2:
                     url = prefix + i.split(":")[1] + ".mov"
@@ -189,43 +203,6 @@ class WeiboSpider(object):
             video_url_list += live_photo_list
         return video_url_list, video_poster_url_list
 
-    def get_location(self, selector):
-        """获取微博发布位置"""
-        location_icon = "timeline_card_small_location_default.png"
-        span_list = selector.xpath("//span")
-        location = ""
-        for i, span in enumerate(span_list):
-            if span.xpath("img/@src"):
-                if location_icon in span.xpath("img/@src")[0]:
-                    location = span_list[i + 1].xpath("string(.)")
-                    break
-        return location
-
-    def get_topics(self, selector):
-        """获取参与的微博话题"""
-        span_list = selector.xpath("//span[@class='surl-text']")
-        topics = ""
-        topic_list = []
-        for span in span_list:
-            text = span.xpath("string(.)")
-            if len(text) > 2 and text[0] == "#" and text[-1] == "#":
-                topic_list.append(text[1:-1])
-        if topic_list:
-            topics = ",".join(topic_list)
-        return topics
-
-    def get_at_users(self, selector):
-        """获取@用户"""
-        a_list = selector.xpath("//a")
-        at_users = ""
-        at_list = []
-        for a in a_list:
-            if "@" + a.xpath("@href")[0][3:] == a.xpath("string(.)"):
-                at_list.append(a.xpath("string(.)")[1:])
-        if at_list:
-            at_users = ",".join(at_list)
-        return at_users
-
     def get_text(self, text_body):
         selector = etree.HTML(text_body)
         if not selector:
@@ -257,16 +234,6 @@ class WeiboSpider(object):
                 url = unquote(url.replace("https://weibo.cn/sinaurl?u=", ""))
                 elem.text = f"{elem.text}({url} )"
         return selector.xpath("string(.)")
-
-    def string_to_int(self, string):
-        """字符串转换为整数"""
-        if isinstance(string, int):
-            return string
-        elif string.endswith("万+"):
-            string = int(string[:-2] + "0000")
-        elif string.endswith("万"):
-            string = int(string[:-1] + "0000")
-        return int(string)
 
     def standardize_date(self, created_at):
         """标准化微博发布时间"""
@@ -321,37 +288,15 @@ class WeiboSpider(object):
     async def get_weibo_json(self, page):
         """获取网页中微博json数据"""
         params = {"containerid": f"107603{self.user_id}", "page": page}
-        js = await self.get_json(params)
+        js = await self.get_json(api_url, params)
         return js
 
     async def get_long_weibo(self, id):
         """获取长微博"""
-        async with httpx.AsyncClient() as client:
-            for _ in range(5):
-                url = f"{http_prefix}://m.weibo.cn/detail/{id}"
-                if cookie := Config.get_config(Path(__file__).parent.name, "COOKIE"):
-                    html = await client.get(
-                        url,
-                        timeout=15,
-                        headers={"cookie": cookie, "User-Agent": user_agent},
-                    )
-                else:
-                    html = await client.get(
-                        url, timeout=15, headers={"User-Agent": user_agent}
-                    )
-                html = html.text
-                p = re.compile(
-                    r"var \$render_data = (.*)[\s\S]{7}{};", re.MULTILINE | re.DOTALL
-                )
-                html = p.findall(html)
-                if html:
-                    html = html[0]
-                    js = json.loads(html[1:-1])
-                    weibo_info = js.get("status")
-                    if weibo_info:
-                        weibo = self.parse_weibo(weibo_info)
-                        return weibo
-                await asyncio.sleep(random.randint(6, 10))
+        weibo_info = await self.get_json(f"https://m.weibo.cn/statuses/show?id={id}")
+        if not weibo_info or weibo_info["ok"] != 1:
+            return None
+        return self.parse_weibo(weibo_info["data"])
 
     async def get_one_weibo(self, info):
         """获取一条微博的全部信息"""
@@ -400,12 +345,11 @@ class WeiboSpider(object):
             if js["ok"]:
                 weibos = js["data"]["cards"]
                 for w in weibos:
-                    if w["card_type"] == 9:
-                        if (
-                            w["mblog"]["id"] in self.received_weibo_ids
-                            or not w.get("profile_type_id")
-                        ):
-                            continue
+                    if (
+                        w["card_type"] == 9
+                        and w.get("profile_type_id")
+                        and w["mblog"]["id"] not in self.received_weibo_ids
+                    ):
                         wb = await self.get_one_weibo(w)
                         if wb:
                             if not self.__recent:
@@ -419,6 +363,10 @@ class WeiboSpider(object):
                             if wb["id"] in self.received_weibo_ids:
                                 continue
                             if (not self.filter_retweet) or ("retweet" not in wb):
+                                wb["pics"] = list(map(sinaimgtvax, wb["pics"]))
+                                wb["video_poster_url"] = list(
+                                    map(sinaimgtvax, wb["video_poster_url"])
+                                )
                                 latest_weibos.append(wb)
                                 self.received_weibo_ids.append(wb["id"])
                                 # self.print_weibo(wb)

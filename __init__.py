@@ -1,3 +1,4 @@
+import yaml
 from random import shuffle
 from typing import Dict
 from pathlib import Path
@@ -15,20 +16,17 @@ from nonebot.adapters.onebot.v11.permission import GROUP
 from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
 from utils.message_builder import image
-from .weibo_spider import WeiboSpider
-from .exception import *
 from configs.config import Config
 from nonebot import Driver, get_driver, get_bot
 from time import strftime, localtime
-import yaml
 
 try:
     import ujson as json
 except:
     import json
 
-from .weibo_spider import weibo_record_path, weibo_id_name_file
-from ._utils import sinaimgtvax, get_image_cqcode
+from .weibo_spider import WeiboSpider, weibo_record_path, weibo_id_name_file
+from ._utils import get_image_cqcode
 
 tasks_dict = {}
 
@@ -155,6 +153,7 @@ async def _():
     await update_user_name()
     await weibo_update_username.send("微博用户名更新结束")
 
+
 async def wb_to_text(wb: Dict):
     msg = f"{wb['screen_name']}'s Weibo:\n====================="
     # id = wb["id"]
@@ -165,14 +164,14 @@ async def wb_to_text(wb: Dict):
         wb = wb["retweet"]
     msg += f"\n{wb['text']}"
     if len(wb["pics"]) > 0:
-        image_urls = [sinaimgtvax(url) for url in wb["pics"]]
+        image_urls = wb["pics"]
         msg += "\n"
         res_imgs = [await get_image_cqcode(url) for url in image_urls]
         for img in res_imgs:
             msg += img
 
     if len(wb["video_poster_url"]) > 0:
-        video_posters = [sinaimgtvax(url) for url in wb["video_poster_url"]]
+        video_posters = wb["video_poster_url"]
         msg += "\n[视频封面]\n"
         video_imgs = [await get_image_cqcode(url) for url in video_posters]
         for img in video_imgs:
@@ -220,7 +219,11 @@ async def wb_to_image(wb: Dict) -> bytes:
 
 
 async def process_wb(format: int, wb: Dict):
-    if not wb["only_visible_to_fans"] and format == 1 and (msg := await wb_to_image(wb)):
+    if (
+        not wb["only_visible_to_fans"]
+        and format == 1
+        and (msg := await wb_to_image(wb))
+    ):
         return msg
     return await wb_to_text(wb)
 
