@@ -91,7 +91,9 @@ class WeiboSpider(object):
         更新微博用户名
         """
         try:
-            js = await self.get_json(api_url, {"containerid": f"100505{self.user_id}"})
+            js = await self.get_json(
+                api_url, params={"type": "uid", "value": self.user_id}
+            )
             if js["ok"]:
                 info = js["data"]["userInfo"]
                 self.user_name = info.get("screen_name")
@@ -285,15 +287,23 @@ class WeiboSpider(object):
         weibo["created_at"] = weibo_info["created_at"]
         return self.standardize_info(weibo)
 
-    async def get_weibo_json(self, page):
+    async def get_weibo_json(self):
         """获取网页中微博json数据"""
-        params = {"containerid": f"107603{self.user_id}", "page": page}
-        js = await self.get_json(api_url, params)
+        js = await self.get_json(
+            api_url,
+            params={
+                "type": "uid",
+                "value": self.user_id,
+                "containerid": f"107603{self.user_id}",
+            },
+        )
         return js
 
     async def get_long_weibo(self, id):
         """获取长微博"""
-        weibo_info = await self.get_json(f"https://m.weibo.cn/statuses/show?id={id}")
+        weibo_info = await self.get_json(
+            f"https://m.weibo.cn/statuses/show", params={"id": id}
+        )
         if not weibo_info or weibo_info["ok"] != 1:
             return None
         return self.parse_weibo(weibo_info["data"])
@@ -341,7 +351,7 @@ class WeiboSpider(object):
     async def get_latest_weibos(self):
         try:
             latest_weibos = []
-            js = await self.get_weibo_json(1)
+            js = await self.get_weibo_json()
             if js["ok"]:
                 weibos = js["data"]["cards"]
                 for w in weibos:
