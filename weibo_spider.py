@@ -205,7 +205,7 @@ class WeiboSpider(object):
 
     def get_text(self, text_body):
         selector = etree.HTML(text_body)
-        if not selector:
+        if selector is None:
             return text_body
         url_elems = selector.xpath("//a[@href]/span[@class='surl-text']")
         for br in selector.xpath("br"):
