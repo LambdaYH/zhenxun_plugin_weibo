@@ -31,7 +31,8 @@ class WeiboSpider(object):
         """Weibo类初始化"""
         self.validate_config(config)
         self.filter_retweet = config["filter_retweet"]
-        self.user_id = config["user_id"]
+        self.user_id: str = config["user_id"]
+        self.user_id_int: int = int(self.user_id)
         self.filter_words = config["filter_words"]
         self.format = config["format"]
         self.received_weibo_ids = []
@@ -271,15 +272,13 @@ class WeiboSpider(object):
 
     def parse_weibo(self, weibo_info):
         weibo = {}
-        if "user" in weibo_info:
-            weibo["screen_name"] = weibo_info["user"]["screen_name"]
-        else:
-            weibo["screen_name"] = ""
+
+        weibo["screen_name"] = weibo_info["user"]["screen_name"]
         weibo["id"] = weibo_info["id"]
         weibo["bid"] = weibo_info["bid"]
+
         text_body = weibo_info["text"]
         text_body = text_body.replace("<br/>", "\n").replace("<br />", "\n")
-
         weibo["text"] = self.get_text(text_body)
 
         weibo["pics"] = self.get_pics(weibo_info)
@@ -357,7 +356,7 @@ class WeiboSpider(object):
                 for w in weibos:
                     if (
                         w["card_type"] == 9
-                        and w.get("profile_type_id")
+                        and w["mblog"]["user"]["id"] == self.user_id_int
                         and w["mblog"]["id"] not in self.received_weibo_ids
                     ):
                         wb = await self.get_one_weibo(w)
