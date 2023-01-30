@@ -273,7 +273,11 @@ class WeiboSpider(object):
     def parse_weibo(self, weibo_info):
         weibo = {}
 
-        weibo["screen_name"] = weibo_info["user"]["screen_name"]
+        weibo["screen_name"] = (
+            weibo_info["user"]["screen_name"]
+            if weibo_info.get("user") and "screen_name" in weibo_info["user"]
+            else ""
+        )
         weibo["id"] = weibo_info["id"]
         weibo["bid"] = weibo_info["bid"]
 
