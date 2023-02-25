@@ -188,42 +188,37 @@ async def wb_to_image(wb: Dict) -> bytes:
     time = wb["created_at"]
     for _ in range(3):
         try:
-            page = await AsyncPlaywright._new_page(
-                is_mobile=True, viewport={"width": 2048, "height": 2732}
-            )
-            await page.goto(
-                url,
-                wait_until="networkidle",
-            )
-            # await page.wait_for_selector(".ad-wrap", state="attached", timeout=8 * 1000)
-            # await page.eval_on_selector(
-            #     selector=".ad-wrap",
-            #     expression="(el) => el.style.display = 'none'",
-            # )
-            # 去除“小程序看微博热搜”横幅
-            try:
-                await page.wait_for_selector(".wrap", state="attached", timeout=30)
-                await page.eval_on_selector(
-                    selector=".wrap",
-                    expression="(el) => el.style.display = 'none'",
+            async with AsyncPlaywright.new_page(is_mobile=True, viewport={"width": 2048, "height": 2732}) as page:
+                await page.goto(
+                    url,
+                    wait_until="networkidle",
                 )
-            except:
-                pass
-            card = await page.wait_for_selector(
-                f"xpath=//div[@class='card m-panel card9 f-weibo']", timeout=6 * 1000
-            )
-            img = await card.screenshot()
-            return (
-                msg
-                + image(img)
-                + f"\n{url}\n时间: {strftime('%Y-%m-%d %H:%M', localtime(time))}"
-            )
+                # await page.wait_for_selector(".ad-wrap", state="attached", timeout=8 * 1000)
+                # await page.eval_on_selector(
+                #     selector=".ad-wrap",
+                #     expression="(el) => el.style.display = 'none'",
+                # )
+                # 去除“小程序看微博热搜”横幅
+                try:
+                    await page.wait_for_selector(".wrap", state="attached", timeout=30)
+                    await page.eval_on_selector(
+                        selector=".wrap",
+                        expression="(el) => el.style.display = 'none'",
+                    )
+                except:
+                    pass
+                card = await page.wait_for_selector(
+                    f"xpath=//div[@class='card m-panel card9 f-weibo']", timeout=6 * 1000
+                )
+                img = await card.screenshot()
+                return (
+                    msg
+                    + image(img)
+                    + f"\n{url}\n时间: {strftime('%Y-%m-%d %H:%M', localtime(time))}"
+                )
         except Exception as e:
             logger.warning(f"截取微博主页失败: {e}")
             sleep(1.1)
-        finally:
-            if page:
-                await page.close()
     return None
 
 
