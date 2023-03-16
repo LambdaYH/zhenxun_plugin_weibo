@@ -348,7 +348,7 @@ class WeiboSpider(object):
             )
             return weibo
         except Exception as e:
-            logger.exception(e)
+            logger.warning(f"解析微博信息异常：{e}")
             self.__recent = False
 
     async def get_latest_weibos(self):
@@ -387,5 +387,5 @@ class WeiboSpider(object):
                 self.save()
             return latest_weibos
         except Exception as e:
-            logger.exception(e)
+            logger.warning(f"获取最新微博异常：{e}")
             return []
