@@ -132,7 +132,7 @@ async def _():
 @weibo_list.handle()
 async def _(event: GroupMessageEvent):
     group_id = event.group_id
-    msg = "\n以下为可订阅微博列表，请发送[开启 xxx]来订阅\n=====================\n"
+    msg = "\n以下为可订阅微博列表，请发送[开启xxx]来订阅\n=====================\n"
     ret = []
     for task, spiders in tasks_dict.items():
         tmp = f'{__plugin_task__[task]}[{"√" if group_manager.check_group_task_status(group_id, task) else "×"}]:'
