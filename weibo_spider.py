@@ -20,7 +20,7 @@ from ._utils import sinaimgtvax
 from .exception import ParseError, NotFoundError
 
 api_url = "https://m.weibo.cn/api/container/getIndex"
-PATH = DATA_PATH / "weibo"
+PATH = DATA_PATH / "zhenxun_plugin_weibo"
 weibo_record_path = PATH / "weibo_records"
 weibo_id_name_file = PATH / "weibo_id_name.json"
 user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/108.0.0.0"
