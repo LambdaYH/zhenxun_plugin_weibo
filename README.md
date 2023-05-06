@@ -16,6 +16,9 @@
 **于真寻的`config.yaml`中添加插件的`COOKIE`配置项，设置[COOKIE](#如何获取cookie)后可获取更多微博**
 
 以下为微博订阅项说明
+
+**订阅项中的所有`user_id`都可替换为`keyword`，替换后表示推送包含`keyword`关键词的所有微博**
+
 ```yaml
 weibo-ff14:                         # 对应到config.yaml中_task下的DEFAULT_WEIBO_FF14
   desciption: 最终幻想14微博推送    # 群内开关，在群被动状态中可以查看，使用[开启/关闭 最终幻想14微博推送]即可控制
@@ -30,7 +33,7 @@ weibo-ff14:                         # 对应到config.yaml中_task下的DEFAULT_
   - user_id: '1794603954'           # 该组其他用户...
     filter_retweet: false
     filter_words: []
-  - user_id: '7316752765'
+  - keyword: '小红猫'                # 关键词，表示推送所有包含该关键词的微博
     filter_retweet: false
     filter_words: []
 ```

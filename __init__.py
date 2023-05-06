@@ -1,5 +1,5 @@
 from random import shuffle
-from typing import Dict
+from typing import Dict, Union, List
 from pathlib import Path
 from asyncio import sleep, gather
 from utils.manager import group_manager
@@ -25,10 +25,15 @@ try:
 except:
     import json
 
-from .weibo_spider import WeiboSpider, weibo_record_path, weibo_id_name_file
+from .weibo_spider import (
+    weibo_record_path,
+    weibo_id_name_file,
+    UserWeiboSpider,
+    KeywordWeiboSpider,
+)
 from ._utils import get_image_cqcode, SendManager
 
-tasks_dict = {}
+tasks_dict: Dict[str, List[Union[UserWeiboSpider, KeywordWeiboSpider]]] = {}
 
 
 def _load_config():
@@ -51,7 +56,10 @@ def _load_config():
         for user in users:
             if "format" not in user:
                 user["format"] = cur_format
-            wb_spider = WeiboSpider(user)
+            if "keyword" in user:
+                wb_spider = KeywordWeiboSpider(user)
+            elif "user_id" in user:
+                wb_spider = UserWeiboSpider(user)
             task_spider_list.append(wb_spider)
         __plugin_task__[task_name] = v["desciption"]
         Config.add_plugin_config(
@@ -132,14 +140,14 @@ async def _():
 @weibo_list.handle()
 async def _(event: GroupMessageEvent):
     group_id = event.group_id
-    msg = "\n以下为可订阅微博列表，请发送[开启xxx]来订阅\n=====================\n"
+    msg = "\n以下为可订阅微博列表，请发送[开启 xxx]来订阅\n=====================\n"
     ret = []
     for task, spiders in tasks_dict.items():
         tmp = f'{__plugin_task__[task]}[{"√" if group_manager.check_group_task_status(group_id, task) else "×"}]:'
         users = []
         for spider in spiders:
             users.append(
-                f"{spider.get_username()}[{'图片' if spider.get_format() == 1 else '文本'}]"
+                f"{spider.get_notice_name()}[{'图片' if spider.get_format() == 1 else '文本'}]"
             )
         ret.append(tmp + " ".join(users))
     await weibo_list.finish(
@@ -188,7 +196,9 @@ async def wb_to_image(wb: Dict) -> bytes:
     time = wb["created_at"]
     for _ in range(3):
         try:
-            async with AsyncPlaywright.new_page(is_mobile=True, viewport={"width": 2048, "height": 2732}) as page:
+            async with AsyncPlaywright.new_page(
+                is_mobile=True, viewport={"width": 2048, "height": 2732}
+            ) as page:
                 await page.goto(
                     url,
                     wait_until="networkidle",
@@ -208,7 +218,8 @@ async def wb_to_image(wb: Dict) -> bytes:
                 except:
                     pass
                 card = await page.wait_for_selector(
-                    f"xpath=//div[@class='card m-panel card9 f-weibo']", timeout=6 * 1000
+                    f"xpath=//div[@class='card m-panel card9 f-weibo']",
+                    timeout=6 * 1000,
                 )
                 img = await card.screenshot()
                 return (
@@ -241,9 +252,9 @@ async def _():
             format = spider.get_format()
             formatted_weibos = [(await process_wb(format, wb)) for wb in latest_weibos]
             if l := len(formatted_weibos):
-                logger.info(f"成功获取@{spider.get_username()}的新微博{l}条")
+                logger.info(f"成功获取{spider.get_notice_name()}的新微博{l}条")
             else:
-                logger.info(f"未检测到@{spider.get_username()}的新微博")
+                logger.info(f"未检测到{spider.get_notice_name()}的新微博")
             weibos += formatted_weibos
         if weibos:
             bot = get_bot()
@@ -288,7 +299,8 @@ async def update_user_name():
         pass
     for _, spiders in tasks_dict.items():
         for spider in spiders:
-            if uname := await spider.update_username():
-                id_name_map[spider.get_userid()] = uname
+            if isinstance(spider, UserWeiboSpider):
+                if uname := await spider.update_username():
+                    id_name_map[spider.get_userid()] = uname
     with open(weibo_id_name_file, "w", encoding="utf8") as f:
         json.dump(id_name_map, f, indent=4, ensure_ascii=False)
