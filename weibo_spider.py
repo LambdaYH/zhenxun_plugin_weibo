@@ -88,7 +88,7 @@ class BaseWeiboSpider:
             "referer": referer if referer is not None else "https://m.weibo.cn/",
             "MWeibo-Pwa": "1",
             "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": UserAgent(browsers=["chrome", "edge"]).random,
+            "User-Agent": user_agent,
         }
         self.__recent = False
         self.__init = False
