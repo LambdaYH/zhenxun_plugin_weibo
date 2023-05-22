@@ -1,4 +1,5 @@
 from random import shuffle
+from datetime import datetime
 from typing import Dict, Union, List
 from pathlib import Path
 from asyncio import sleep, gather
@@ -9,7 +10,8 @@ from utils.http_utils import AsyncPlaywright
 from utils.image_utils import text2image
 from utils.message_builder import image
 from configs.config import Config
-from nonebot.adapters.onebot.v11 import GroupMessageEvent
+from apscheduler.triggers.cron import CronTrigger
+from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message, MessageSegment
 from nonebot import on_command
 from nonebot.adapters.onebot.v11.permission import GROUP
 from nonebot.permission import SUPERUSER
@@ -100,6 +102,11 @@ __plugin_configs__ = {
         "help": "添加cookie后可以获取到更多的微博",
         "default_value": None,
     },
+    "custom_send_time": {
+        "value": None,
+        "help": "自定义发送时间，cron格式，若空，则检测到微博后立即发送，反之，仅设定的时刻推送",
+        "default_value": None,
+    },
 }
 
 
@@ -122,6 +129,62 @@ weibo_update_username = on_command(
 
 driver: Driver = get_driver()
 forward_mode = Config.get_config(Path(__file__).parent.name, "FORWARD_MODE")
+custom_send_time = Config.get_config(
+    Path(__file__).parent.name, "CUSTOM_SEND_TIME", default=None
+)
+
+message_storehouse: Dict[str, List[Message]] = None
+if custom_send_time is not None:
+    import pickle
+    from .weibo_spider import PATH
+
+    last_push_time: datetime = datetime.now()
+    message_storehouse_file = PATH / "message_storehouse.pkl"
+    message_storehouse_file.parent.mkdir(parents=True, exist_ok=True)
+
+    async def custom_send():
+        bot = get_bot()
+        if not bot:
+            return
+        gl = await bot.get_group_list()
+        gl = [g["group_id"] for g in gl]
+        shuffle(gl)
+        global message_storehouse, last_push_time
+        # 防止推送过程来新的
+        message_storehouse_cp = message_storehouse
+        start_line = MessageSegment.node_custom(
+            bot.self_id,
+            "微博威",
+            f"以下为{last_push_time.strftime('%Y-%m-%d %H:%M:%S')}至今群内的订阅微博",
+        )
+        last_push_time = datetime.now()
+        message_storehouse = {}
+        for group_id in gl:
+            group_message = [start_line]
+            for task, messages in message_storehouse_cp.items():
+                if group_manager.check_group_task_status(group_id, task):
+                    group_message += [
+                        MessageSegment.node_custom(bot.self_id, "微博威", message)
+                        for message in messages
+                    ]
+            if len(group_message) != 1:
+                await bot.send_forward_msg(group_id=group_id, messages=group_message)
+                await sleep(0.3)
+
+    @driver.on_startup
+    async def _():
+        global message_storehouse
+        if message_storehouse_file.exists():
+            with message_storehouse_file.open("rb") as f:
+                message_storehouse = pickle.load(f)
+        else:
+            message_storehouse = {}
+        scheduler.add_job(custom_send, CronTrigger.from_crontab(custom_send_time))
+
+    @driver.on_shutdown
+    async def _():
+        with message_storehouse_file.open("wb") as f:
+            pickle.dump(message_storehouse, f)
 
 
 @driver.on_startup
@@ -255,7 +318,12 @@ async def _():
                 logger.info(f"成功获取{spider.get_notice_name()}的新微博{l}条")
             else:
                 logger.info(f"未检测到{spider.get_notice_name()}的新微博")
-            weibos += formatted_weibos
+            if custom_send_time is None:
+                weibos += formatted_weibos
+            else:
+                if task not in message_storehouse:
+                    message_storehouse[task] = []
+                message_storehouse[task] += formatted_weibos
         if weibos:
             bot = get_bot()
             gl = await bot.get_group_list()
